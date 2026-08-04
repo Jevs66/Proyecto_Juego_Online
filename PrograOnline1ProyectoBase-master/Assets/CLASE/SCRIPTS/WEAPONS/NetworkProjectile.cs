@@ -13,12 +13,24 @@ public class NetworkProjectile : NetworkBehaviour
     [SerializeField] private float decalDuration;
     [SerializeField] private float decalOffset;
 
+    [Networked]
+    public int Damage { get; private set; }
+   
+    [Networked]
+    public PlayerRef Shooter { get; private set; }
+
     private Rigidbody projectileRb;
     private bool hasImpacted;
 
     private void Awake()
     {
         projectileRb = GetComponent<Rigidbody>();
+    }
+
+    public void Initialize(int damage, PlayerRef shooter)
+    {
+        Damage = damage;
+        Shooter = shooter;
     }
 
     public override void Spawned()
@@ -40,7 +52,19 @@ public class NetworkProjectile : NetworkBehaviour
             return;
         }
 
+        Health targetHealth = collision.collider.GetComponentInParent<Health>();
+
+        if (targetHealth != null && targetHealth.Object.InputAuthority == Shooter)
+        {
+            return;
+        }
+
         hasImpacted = true;
+
+        if (targetHealth != null)
+        {
+            targetHealth.TakeDamage(Damage, Shooter);
+        }
 
         ContactPoint contact = collision.GetContact(0);
 
@@ -70,7 +94,10 @@ public class NetworkProjectile : NetworkBehaviour
     {
         yield return new WaitForSeconds(projectileLifetime);
 
-        Runner.Despawn(Object);
+        if (Object != null && Object.IsValid)
+        {
+            Runner.Despawn(Object);
+        }
     }
 
     private IEnumerator ImpactCoroutine(Vector3 impactPosition, Vector3 impactNormal)

@@ -16,10 +16,13 @@ public class MovementController : NetworkBehaviour
 
     [SerializeField] private Animator _animator;
 
+    private Health health;
+
     public override void Spawned()
     {
         rbPlayer = GetComponent<Rigidbody>();
         kcc = GetComponent<SimpleKCC>();
+        health = GetComponent<Health>();
     }
    
     
@@ -30,10 +33,20 @@ public class MovementController : NetworkBehaviour
     
     public override void FixedUpdateNetwork()
     {
-        //if (!HasInputAuthority && !HasStateAuthority)
-        //    return;
+        if (health != null && health.IsDead)
+        {
+            StopMovement();
+            return;
+        }
 
-        if(GetInput(out NetworkInfoData input))
+        if (MatchManager.Instance != null &&
+            MatchManager.Instance.MatchFinished)
+        {
+            StopMovement();
+            return;
+        }
+
+        if (GetInput(out NetworkInfoData input))
         {
             kcc.SetLookRotation(0f, input.lookRotationY);
 
@@ -70,8 +83,23 @@ public class MovementController : NetworkBehaviour
             input.runInputPressed ? runSpeed : walkSpeed;
     }
 
+    private void StopMovement()
+    {
+        kcc.Move(Vector3.zero);
+
+        if (_animator == null)
+        {
+            return;
+        }
+
+        _animator.SetBool("IsWalking", false);
+        _animator.SetBool("IsRunning", false);
+        _animator.SetFloat("WalkingZ", 0f);
+        _animator.SetFloat("WalkingX", 0f);
+    }
+
 
     #endregion
 
-  
+
 }

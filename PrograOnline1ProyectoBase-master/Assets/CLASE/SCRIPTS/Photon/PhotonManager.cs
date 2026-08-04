@@ -18,6 +18,9 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     [SerializeField] private Dictionary<PlayerRef, NetworkObject> players = new Dictionary<PlayerRef, NetworkObject>();
 
+    [Header("Player Spawn Points")]
+    [SerializeField] private Transform[] playerSpawnPoints;
+
     private void Awake()
     {
         runner = GetComponent<NetworkRunner>();
@@ -69,10 +72,34 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        //runner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, player);
+        if (!runner.IsServer)
+        {
+            onPlayerJoined?.Invoke();
+            return;
+        }
 
-        if(runner.IsServer)
-            players.Add(player, runner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, player));
+        int spawnIndex = players.Count;
+
+        Vector3 spawnPosition = Vector3.zero;
+        Quaternion spawnRotation = Quaternion.identity;
+
+        if (playerSpawnPoints != null && playerSpawnPoints.Length > 0)
+        {
+            spawnIndex %= playerSpawnPoints.Length;
+
+            Transform selectedSpawn = playerSpawnPoints[spawnIndex];
+
+            if (selectedSpawn != null)
+            {
+                spawnPosition = selectedSpawn.position;
+
+                spawnRotation = selectedSpawn.rotation;
+            }
+        }
+
+        NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, spawnRotation, player);
+
+        players.Add(player, playerObject);
 
         onPlayerJoined?.Invoke();
     }
@@ -128,7 +155,22 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        if (!runner.IsServer)
+        {
+            return;
+        }
 
+        if (!players.TryGetValue(player, out NetworkObject playerObject))
+        {
+            return;
+        }
+
+        if (playerObject != null && playerObject.IsValid)
+        {
+            runner.Despawn(playerObject);
+        }
+
+        players.Remove(player);
     }
 
     public void OnSceneLoadDone(NetworkRunner runner)

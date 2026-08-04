@@ -341,7 +341,7 @@ MonoBehaviour:
   shootPoint: {fileID: 489980507347547673}
   shootLayer:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 129
   raycastDistance: 100
   projectileForce: 20
   shootRate: 0.25
@@ -1310,8 +1310,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 546cef9571d25da458499a83621ee6bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  __actualHealth: 0
-  maxHealth: 0
+  _ActualHealth: 0
+  _IsDead:
+    _value: 0
+  maxHealth: 100
 --- !u!114 &6297177963695872642
 MonoBehaviour:
   m_ObjectHideFlags: 0

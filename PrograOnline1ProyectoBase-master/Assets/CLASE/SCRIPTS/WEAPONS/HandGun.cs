@@ -1,4 +1,5 @@
 using Fusion;
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,17 +10,31 @@ public class HandGun : Weapon
 
     private float nextShootTime;
 
+    private Transform playerRoot;
+
     private void Start()
     {
         if (actualAmmo <= 0)
         {
             actualAmmo = magazineSize;
         }
+
+        MovementController movementController = GetComponentInParent<MovementController>();
+
+        if (movementController != null)
+        {
+            playerRoot = movementController.transform;
+        }
     }
 
     private void Update()
     {
         if (Object != null && !HasInputAuthority)
+        {
+            return;
+        }
+
+        if (MatchManager.Instance != null && MatchManager.Instance.MatchFinished)
         {
             return;
         }
@@ -48,6 +63,11 @@ public class HandGun : Weapon
 
     public void Shoot()
     {
+        if (MatchManager.Instance != null && MatchManager.Instance.MatchFinished)
+        {
+            return;
+        }
+
         if (Time.time < nextShootTime)
         {
             return;
@@ -77,14 +97,7 @@ public class HandGun : Weapon
     {
         Ray ray = GetShootRay();
 
-        if (Physics.Raycast(ray, out RaycastHit hit, raycastDistance, shootLayer))
-        {
-            Debug.Log("Objeto disparado con Raycast: " + hit.collider.gameObject.name);
-        }
-        else
-        {
-            Debug.Log("Disparo con Raycast: no golpeó ningún objeto.");
-        }
+        RPC_RaycastShoot(ray.origin, ray.direction);
     }
 
     public override void PhysicsShoot()
@@ -93,7 +106,7 @@ public class HandGun : Weapon
 
         Vector3 spawnPosition = origin.position + origin.forward * 0.2f;
 
-        RPC_PhysicsShoot(spawnPosition, origin.rotation);
+        RPC_PhysicsShoot(spawnPosition, origin.rotation, damage);
     }
 
     public override void Reload()
@@ -134,31 +147,57 @@ public class HandGun : Weapon
     }
 
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
-    public void RPC_RaycastShoot(RpcInfo info = default)
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_RaycastShoot(Vector3 rayOrigin, Vector3 rayDirection, RpcInfo info = default)
     {
-        Ray ray = GetShootRay();
+        RaycastHit[] hits = Physics.RaycastAll(rayOrigin, rayDirection, raycastDistance, shootLayer, QueryTriggerInteraction.Ignore);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, raycastDistance, shootLayer))
+        Array.Sort(hits, (firstHit, secondHit) => firstHit.distance.CompareTo(secondHit.distance));
+
+        foreach (RaycastHit hit in hits)
         {
+            if (playerRoot != null &&
+                hit.collider.transform.root == playerRoot.root)
+            {
+                continue;
+            }
+
             Debug.Log("Objeto disparado con Raycast: " + hit.collider.gameObject.name);
+
+            Health targetHealth = hit.collider.GetComponentInParent<Health>();
+
+            if (targetHealth != null)
+            {
+                targetHealth.TakeDamage(damage, info.Source);
+            }
+
+            return;
         }
-        else
-        {
-            Debug.Log("Disparo con Raycast: no golpeó ningún objeto.");
-        }
+
+        Debug.Log("Disparo con Raycast: no golpeó ningún objeto.");
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_PhysicsShoot(Vector3 shootPos, Quaternion shootRot, RpcInfo info = default)
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_PhysicsShoot(Vector3 shootPos, Quaternion shootRot, int projectileDamage, RpcInfo info = default)
     {
         if (!projectilePrefab.IsValid)
         {
             Debug.LogError("Projectile Prefab no está asignado.");
+
             return;
         }
 
-        Runner.Spawn(projectilePrefab, shootPos, shootRot, info.Source);
+        Runner.Spawn(projectilePrefab, shootPos, shootRot, info.Source,
+            (runner, spawnedObject) =>
+            {
+                NetworkProjectile projectile = spawnedObject.GetComponent<NetworkProjectile>();
+
+                if (projectile != null)
+                {
+                    projectile.Initialize(projectileDamage, info.Source);
+                }
+            }
+        );
     }
 
 }
