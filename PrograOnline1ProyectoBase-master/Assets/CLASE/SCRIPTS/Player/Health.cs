@@ -68,6 +68,11 @@ public class Health : NetworkBehaviour
         IsDead = true;
         ActualHealth = 0;
 
+        if (BombController.Instance != null)
+        {
+            BombController.Instance.DropIfCarriedBy(Object.InputAuthority);
+        }
+
         Debug.Log("Jugador eliminado: " + Object.InputAuthority + " | Atacante: " + attacker);
 
         if (MatchManager.Instance != null)

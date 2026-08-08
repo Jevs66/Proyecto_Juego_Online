@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class InputManager : MonoBehaviour
 {
@@ -83,6 +84,11 @@ public class InputManager : MonoBehaviour
     public float GetLookRotationY()
     {
         return lookRotationY;
+    }
+
+    public bool IsInteracting()
+    {
+        return Keyboard.current != null && Keyboard.current.eKey.isPressed;
     }
 
 

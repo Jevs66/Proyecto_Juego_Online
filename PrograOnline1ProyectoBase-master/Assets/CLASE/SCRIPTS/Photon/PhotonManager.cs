@@ -99,6 +99,8 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, spawnRotation, player);
 
+        runner.SetPlayerObject(player, playerObject);
+
         players.Add(player, playerObject);
 
         onPlayerJoined?.Invoke();
@@ -117,7 +119,9 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
             moveInputPressed = InputManager.Instance.IsMoveInputPressed(),
             movingBackwards = InputManager.Instance.IsMovingBackwards(),
             movingOnXAxis = InputManager.Instance.IsMovingOnXAxis(),
-            isShooting = InputManager.Instance.IsShooting()
+            isShooting = InputManager.Instance.IsShooting(),
+
+             interactPressed = InputManager.Instance.IsInteracting()
         };
 
         input.Set(data);

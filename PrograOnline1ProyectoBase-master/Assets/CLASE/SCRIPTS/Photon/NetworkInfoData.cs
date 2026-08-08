@@ -13,4 +13,6 @@ public struct NetworkInfoData : INetworkInput
     public bool movingBackwards;
     public bool movingOnXAxis;
     public bool isShooting;
+
+    public bool interactPressed;
 }
