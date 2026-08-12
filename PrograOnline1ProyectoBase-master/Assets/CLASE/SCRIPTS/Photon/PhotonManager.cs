@@ -99,6 +99,13 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
         NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, spawnRotation, player);
 
+        PlayerInteraction playerInteraction = playerObject.GetComponent<PlayerInteraction>();
+
+        if (playerInteraction != null)
+        {
+            playerInteraction.InitializePlayerIndex(spawnIndex);
+        }
+
         runner.SetPlayerObject(player, playerObject);
 
         players.Add(player, playerObject);
@@ -195,6 +202,31 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
 
+    }
+
+    public bool TryGetPlayerSpawnPoint(int playerIndex, out Vector3 position, out Quaternion rotation)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+
+        if (playerSpawnPoints == null || playerSpawnPoints.Length == 0)
+        {
+            return false;
+        }
+
+        int spawnIndex = playerIndex % playerSpawnPoints.Length;
+
+        Transform spawnPoint = playerSpawnPoints[spawnIndex];
+
+        if (spawnPoint == null)
+        {
+            return false;
+        }
+
+        position = spawnPoint.position;
+        rotation = spawnPoint.rotation;
+
+        return true;
     }
     #endregion
 

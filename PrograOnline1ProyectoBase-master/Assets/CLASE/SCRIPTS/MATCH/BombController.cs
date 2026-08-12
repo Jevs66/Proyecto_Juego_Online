@@ -33,6 +33,10 @@ public class BombController : NetworkBehaviour
     private Rigidbody bombRigidbody;
     private PlayerBombHolder currentHolder;
 
+    private Vector3 initialPosition;
+
+    private Quaternion initialRotation;
+
     private void Awake()
     {
         bombRigidbody = GetComponent<Rigidbody>();
@@ -41,6 +45,9 @@ public class BombController : NetworkBehaviour
     public override void Spawned()
     {
         Instance = this;
+
+        initialPosition = transform.position;
+        initialRotation = transform.rotation;
 
         if (HasStateAuthority)
         {
@@ -256,6 +263,35 @@ public class BombController : NetworkBehaviour
         }
 
         Debug.Log("La bomba explotó.");
+    }
+
+    public void ResetBomb()
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        Carrier = PlayerRef.None;
+        Planter = PlayerRef.None;
+        PlantedZoneIndex = -1;
+        ExplosionTimeRemaining = 0f;
+        CurrentState = BombState.OnGround;
+
+        currentHolder = null;
+
+        transform.position = initialPosition;
+        transform.rotation = initialRotation;
+
+        if (bombRigidbody != null)
+        {
+            bombRigidbody.linearVelocity = Vector3.zero;
+            bombRigidbody.angularVelocity = Vector3.zero;
+        }
+
+        UpdateBombComponents();
+
+        Debug.Log("Bomba reiniciada.");
     }
 
     private PlayerBombHolder FindHolder(PlayerRef player)

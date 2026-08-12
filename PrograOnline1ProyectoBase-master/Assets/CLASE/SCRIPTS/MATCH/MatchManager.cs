@@ -16,6 +16,8 @@ public class MatchManager : NetworkBehaviour
 
     public bool MatchFinished => CurrentState == MatchState.Finished;
 
+    private bool restartPending;
+
     public override void Spawned()
     {
         Instance = this;
@@ -26,6 +28,22 @@ public class MatchManager : NetworkBehaviour
             Winner = PlayerRef.None;
             CurrentWinCondition = WinConditions.None;
         }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        if (!restartPending)
+        {
+            return;
+        }
+
+        restartPending = false;
+        RestartMatch();
     }
 
     public void PlayerDied(PlayerRef deadPlayer)
@@ -99,6 +117,119 @@ public class MatchManager : NetworkBehaviour
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+    public void RequestRestart()
+    {
+        if (Runner == null)
+        {
+            return;
+        }
+
+        if (HasStateAuthority)
+        {
+            restartPending = true;
+            return;
+        }
+
+        RPC_RequestRestart();
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void RPC_RequestRestart(RpcInfo info = default)
+    {
+        if (info.Source != PlayerRef.FromIndex(0))
+        {
+            Debug.LogWarning("El jugador " + info.Source + " intentó reiniciar la partida.");
+            return;
+        }
+
+        restartPending = true;
+    }
+
+    private void RestartMatch()
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        CurrentState = MatchState.Playing;
+        Winner = PlayerRef.None;
+        CurrentWinCondition = WinConditions.None;
+
+        ResetPlayers();
+        ResetBomb();
+        ResetZones();
+
+        RPC_ResetMatchVisuals();
+
+        Debug.Log("PARTIDA REINICIADA.");
+    }
+
+    private void ResetPlayers()
+    {
+        PhotonManager photonManager = FindFirstObjectByType<PhotonManager>();
+
+        foreach (PlayerRef player in Runner.ActivePlayers)
+        {
+            NetworkObject playerObject = Runner.GetPlayerObject(player);
+
+            if (playerObject == null)
+            {
+                continue;
+            }
+
+            PlayerInteraction playerInteraction = playerObject.GetComponent<PlayerInteraction>();
+            Health health = playerObject.GetComponent<Health>();
+            MovementController movementController = playerObject.GetComponent<MovementController>();
+            WeaponHandler weaponHandler = playerObject.GetComponent<WeaponHandler>();
+
+            if (health != null)
+            {
+                health.ResetHealth();
+            }
+
+            if (photonManager != null && playerInteraction != null && movementController != null)
+            {
+                if (photonManager.TryGetPlayerSpawnPoint(playerInteraction.PlayerIndex, out Vector3 spawnPosition, out Quaternion spawnRotation))
+                {
+                    movementController.ResetPlayerPosition(spawnPosition, spawnRotation);
+                }
+            }
+
+            if (weaponHandler != null)
+            {
+                weaponHandler.ResetWeapons();
+            }
+        }
+    }
+
+    private void ResetBomb()
+    {
+        if (BombController.Instance == null)
+        {
+            return;
+        }
+
+        BombController.Instance.ResetBomb();
+    }
+
+    private void ResetZones()
+    {
+        BombZone[] zones = FindObjectsByType<BombZone>(FindObjectsSortMode.None);
+
+        foreach (BombZone zone in zones)
+        {
+            zone.ResetInteraction();
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ResetMatchVisuals()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void OnMatchStateChanged()

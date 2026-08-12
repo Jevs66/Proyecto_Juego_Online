@@ -8,6 +8,8 @@ public class PlayerInteraction : NetworkBehaviour
 
     private BombZone currentZone;
 
+    public BombZone CurrentZone => currentZone;
+
     public void InitializePlayerIndex(int playerIndex)
     {
         if (!HasStateAuthority)

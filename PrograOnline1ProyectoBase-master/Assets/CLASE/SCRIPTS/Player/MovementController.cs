@@ -98,6 +98,19 @@ public class MovementController : NetworkBehaviour
         _animator.SetFloat("WalkingX", 0f);
     }
 
+    public void ResetPlayerPosition(Vector3 position, Quaternion rotation)
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        kcc.SetPosition(position);
+        kcc.SetLookRotation(0f, rotation.eulerAngles.y);      
+
+        StopMovement();
+    }
+
 
     #endregion
 

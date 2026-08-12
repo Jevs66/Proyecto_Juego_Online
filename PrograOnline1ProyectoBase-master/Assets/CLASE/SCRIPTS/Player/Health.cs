@@ -85,6 +85,17 @@ public class Health : NetworkBehaviour
         }
     }
 
+    public void ResetHealth()
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        ActualHealth = maxHealth;
+        IsDead = false;
+    }
+
     private void OnHealthChanged()
     {
         Debug.Log("Vida actual de " + Object.InputAuthority + ": " + ActualHealth);

@@ -7,7 +7,11 @@ public class BombZone : NetworkBehaviour
 
     [SerializeField] private int zoneIndex;
 
+    public int ZoneIndex => zoneIndex;
+
     [SerializeField] private int ownerPlayerIndex;
+
+    public int OwnerPlayerIndex => ownerPlayerIndex;
 
     [SerializeField] private Transform plantPoint;
 
@@ -125,8 +129,13 @@ public class BombZone : NetworkBehaviour
         ResetInteraction();
     }
 
-    private void ResetInteraction()
+    public void ResetInteraction()
     {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
         CurrentAction = BombZoneAction.None;
         InteractionProgress = 0f;
         InteractingPlayer = PlayerRef.None;

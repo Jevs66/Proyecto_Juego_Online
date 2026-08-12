@@ -7,6 +7,8 @@ public class WeaponHandler : NetworkBehaviour
     [SerializeField] private Weapon[] weapons;
     [SerializeField] private Weapon currentWeapon;
 
+    public Weapon CurrentWeapon => currentWeapon;
+
     private Action Shoot;
 
     private Health health;
@@ -38,6 +40,22 @@ public class WeaponHandler : NetworkBehaviour
             if (input.isShooting)
             {
                 Shoot?.Invoke();
+            }
+        }
+    }
+
+    public void ResetWeapons()
+    {
+        if (!HasStateAuthority)
+        {
+            return;
+        }
+
+        foreach (Weapon weapon in weapons)
+        {
+            if (weapon is HandGun handGun)
+            {
+                handGun.ResetWeapon();
             }
         }
     }

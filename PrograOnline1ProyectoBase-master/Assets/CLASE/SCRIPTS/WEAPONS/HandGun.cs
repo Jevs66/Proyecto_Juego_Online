@@ -12,12 +12,18 @@ public class HandGun : Weapon
 
     private Transform playerRoot;
 
+    private int initialMagazineAmmo;
+    private int initialMaxAmmoCapacity;
+
     private void Start()
     {
         if (actualAmmo <= 0)
         {
             actualAmmo = magazineSize;
         }
+
+        initialMagazineAmmo = actualAmmo;
+        initialMaxAmmoCapacity = maxAmmoCapacity;
 
         MovementController movementController = GetComponentInParent<MovementController>();
 
@@ -123,6 +129,18 @@ public class HandGun : Weapon
         maxAmmoCapacity -= ammoToReload;
 
         Debug.Log("Recargando. Munición actual: " + actualAmmo + " / Reserva: " + maxAmmoCapacity);
+    }
+
+    public void ResetWeapon()
+    {
+        if (Object != null && !HasStateAuthority)
+        {
+            return;
+        }
+
+        actualAmmo = initialMagazineAmmo;
+        maxAmmoCapacity = initialMaxAmmoCapacity;
+        nextShootTime = 0f;
     }
 
     private Transform GetShootOrigin()
