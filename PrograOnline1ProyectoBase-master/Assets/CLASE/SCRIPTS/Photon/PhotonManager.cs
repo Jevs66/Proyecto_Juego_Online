@@ -28,6 +28,11 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     }
 
+    public async Task ConnectToServerLobby()
+    {
+        await runner.JoinSessionLobby(SessionLobby.ClientServer);
+    }
+
     private void Start()
     {
         runner.AddCallbacks(this);
