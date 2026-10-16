@@ -21,6 +21,9 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     [Header("Player Spawn Points")]
     [SerializeField] private Transform[] playerSpawnPoints;
 
+    public static event Action onSessionListUpdated;
+    public static List<SessionInfo> sessionList = new List<SessionInfo>();
+
     private void Awake()
     {
         runner = GetComponent<NetworkRunner>();
@@ -38,7 +41,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         runner.AddCallbacks(this);
     }
 
-    private async Task StartGame(GameMode mode)
+    private async Task StartCustomMatch(GameMode mode)
     {
        
         SceneRef gameScene = SceneRef.FromIndex(0);
@@ -59,18 +62,42 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = mode,
             SessionName = "#0001",
             Scene = sceneInfo,
-            CustomLobbyName = "Lobby de pruebas para clase"
+            CustomLobbyName = "Lobby de pruebas"
+        });
+    }
+    private async Task StartQuickMatch(GameMode mode)
+    {
+       
+        SceneRef gameScene = SceneRef.FromIndex(0);
+
+        NetworkSceneInfo sceneInfo = new NetworkSceneInfo();
+
+        if (gameScene.IsValid)
+        {
+            sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Additive);
+        }
+        else
+        {
+            Debug.LogError("Escena no valida");
+        }
+
+        await runner.StartGame(new StartGameArgs()
+        {
+            GameMode = mode,
+            SessionName = "#0001",
+            Scene = sceneInfo,
+            CustomLobbyName = "Lobby de pruebas"
         });
     }
 
     public void StartGameAsHost()
     {
-        Task startGame = StartGame(GameMode.Host);
+        Task startGame = StartCustomMatch(GameMode.Host);
     }
 
     public void StartGameAsClient()
     {
-        Task startGame = StartGame(GameMode.Client);
+        Task startGame = StartCustomMatch(GameMode.Client);
     }
 
     #region Metodos de Photon
@@ -116,6 +143,12 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         players.Add(player, playerObject);
 
         onPlayerJoined?.Invoke();
+    }
+
+    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
+    {
+        PhotonManager.sessionList = sessionList;
+        onSessionListUpdated.Invoke();
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
@@ -197,12 +230,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadStart(NetworkRunner runner)
     {
 
-    }
-
-    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-    {
-
-    }
+    }    
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
