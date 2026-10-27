@@ -10,6 +10,8 @@ using UnityEngine.SceneManagement;
 
 public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 {
+    public static PhotonManager Instance;
+
     private NetworkRunner runner;
 
     [SerializeField] private UnityEvent onPlayerJoined;
@@ -26,6 +28,15 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     private void Awake()
     {
+        if(Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
         runner = GetComponent<NetworkRunner>();
         runner.ProvideInput = true;
 
@@ -62,7 +73,36 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = mode,
             SessionName = "#0001",
             Scene = sceneInfo,
-            CustomLobbyName = "Lobby de pruebas"
+            PlayerCount = 2,
+            SessionProperties = new Dictionary<string, SessionProperty>
+            {
+                {"MapName","Abyss"},
+                {"GameMode", "Casual"}
+            }
+        });
+    }
+    private async Task StartCustomMatch(GameMode mode, string serverName)
+    {
+       
+        SceneRef gameScene = SceneRef.FromIndex(0);
+
+        NetworkSceneInfo sceneInfo = new NetworkSceneInfo();
+
+        if (gameScene.IsValid)
+        {
+            sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Additive);
+        }
+        else
+        {
+            Debug.LogError("Escena no valida");
+        }
+
+        await runner.StartGame(new StartGameArgs()
+        {
+            GameMode = mode,
+            SessionName = serverName,
+            Scene = sceneInfo,
+            PlayerCount = 2
         });
     }
     private async Task StartQuickMatch(GameMode mode)
@@ -148,7 +188,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
     {
         PhotonManager.sessionList = sessionList;
-        onSessionListUpdated.Invoke();
+        onSessionListUpdated?.Invoke();
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)

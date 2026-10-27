@@ -10,6 +10,8 @@ public class LobbyManager : MonoBehaviour
     private void OnEnable()
     {
         PhotonManager.onSessionListUpdated += OnSessionListUpdated;
+
+        OnSessionListUpdated();
     }
 
     private void OnDisable()
@@ -19,7 +21,17 @@ public class LobbyManager : MonoBehaviour
 
     public void OnSessionListUpdated()
     {
-        if(PhotonManager.sessionList.Count == 0)
+        foreach (Transform child in viewportContent)
+        {
+            if (child.GetComponent<SessionEntry>() != null)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        noSessionsFounding.SetActive(PhotonManager.sessionList.Count == 0);
+
+        if (PhotonManager.sessionList.Count == 0)
         {
             noSessionsFounding.SetActive(true);
         }
@@ -33,12 +45,13 @@ public class LobbyManager : MonoBehaviour
                 serverData.serverName = PhotonManager.sessionList[i].Name;
                 serverData.currentPlayers = PhotonManager.sessionList[i].PlayerCount;
                 serverData.maxPlayers = PhotonManager.sessionList[i].MaxPlayers;
+                serverData.mapName = PhotonManager.sessionList[i].Properties["MapName"];
+                serverData.gameMode = PhotonManager.sessionList[i].Properties["GameMode"];
 
 
                 session.GetComponent<SessionEntry>().SetInfo(serverData);
             }
         }
     }
-
 
 }

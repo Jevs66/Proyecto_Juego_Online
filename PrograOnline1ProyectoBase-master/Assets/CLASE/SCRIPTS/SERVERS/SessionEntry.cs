@@ -11,7 +11,14 @@ public class SessionEntry : MonoBehaviour
     public void SetInfo(ServerDataStruct serverData)
     {
         serverName.text = serverData.serverName;
+        mapName.text = serverData.mapName;
+        gameMode.text = serverData.gameMode;
         currentPlayers.text = serverData.currentPlayers + "/" + serverData.maxPlayers;
+    }
+
+    public void JoinGame()
+    {
+        
     }
 
 }
