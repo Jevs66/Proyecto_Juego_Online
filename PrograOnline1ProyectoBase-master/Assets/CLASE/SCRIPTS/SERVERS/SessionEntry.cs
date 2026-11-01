@@ -18,7 +18,7 @@ public class SessionEntry : MonoBehaviour
 
     public void JoinGame()
     {
-        
+        PhotonManager.Instance.StartGameAsClient(serverName.text);
     }
 
 }

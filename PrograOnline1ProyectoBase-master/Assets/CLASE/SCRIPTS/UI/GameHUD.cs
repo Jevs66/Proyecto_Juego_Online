@@ -167,7 +167,7 @@ public class GameHUD : MonoBehaviour
 
         BombController bomb = BombController.Instance;
 
-        bool isOwner = playerInteraction.PlayerIndex == zone.OwnerPlayerIndex;
+        bool isOwner = playerInteraction.TeamIndex == zone.OwnerPlayerIndex % 2 + 1;
 
         if (bomb.CurrentState == BombState.Carried && bomb.Carrier == MatchManager.Instance.Runner.LocalPlayer && !isOwner)
         {
@@ -209,7 +209,7 @@ public class GameHUD : MonoBehaviour
 
         resultPanel.SetActive(true);
 
-        if (MatchManager.Instance.Winner == localPlayer)
+        if (playerInteraction.TeamIndex == MatchManager.Instance.WinnerTeam)
         {
             resultText.text = "VICTORIA";
         }

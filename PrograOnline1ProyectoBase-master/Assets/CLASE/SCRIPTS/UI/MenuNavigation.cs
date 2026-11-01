@@ -4,6 +4,8 @@ using TMPro;
 
 public class MenuNavigation : MonoBehaviour
 {
+    public static MenuNavigation Instance;
+
     public GameObject startPanel;
     public GameObject mainMenuPanel;
     public GameObject serversPanel;
@@ -13,7 +15,15 @@ public class MenuNavigation : MonoBehaviour
     [SerializeField] private PhotonManager photonManager;
     [SerializeField] private TMP_Text startText;
 
+    [SerializeField] private TMP_InputField serverNameInput;
+    [SerializeField] private TMP_InputField maxPlayersInput;
+
     private bool connectingToLobby;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void Start()
     {
@@ -37,6 +47,18 @@ public class MenuNavigation : MonoBehaviour
         await photonManager.ConnectToServerLobby();
 
         ShowMainMenu();
+    }
+
+    public void CreateServer()
+    {
+        photonManager.StartGameAsHost(serverNameInput.text, Mathf.Clamp(int.Parse(maxPlayersInput.text), 2, 10));
+    }
+
+    public void ShowSessionLoading(string message)
+    {
+        connectingToLobby = true;
+        startText.text = message;
+        ShowStart();
     }
 
     public void ShowStart()

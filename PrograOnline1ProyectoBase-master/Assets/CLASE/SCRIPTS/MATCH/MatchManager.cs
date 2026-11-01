@@ -12,6 +12,9 @@ public class MatchManager : NetworkBehaviour
     public PlayerRef Winner { get; private set; }
 
     [Networked]
+    public int WinnerTeam { get; private set; }
+
+    [Networked]
     public WinConditions CurrentWinCondition { get; private set; }
 
     public bool MatchFinished => CurrentState == MatchState.Finished;
@@ -26,6 +29,7 @@ public class MatchManager : NetworkBehaviour
         {
             CurrentState = MatchState.Playing;
             Winner = PlayerRef.None;
+            WinnerTeam = 0;
             CurrentWinCondition = WinConditions.None;
         }
     }
@@ -60,26 +64,28 @@ public class MatchManager : NetworkBehaviour
 
         PlayerRef winner = FindOpponent(deadPlayer);
 
-        if (winner == PlayerRef.None)
-        {
-            Debug.LogWarning("No se encontró al jugador ganador.");
-            return;
-        }
+        if (winner == PlayerRef.None) return;
 
         EndMatch(winner, WinConditions.PlayerKilled);
     }
 
     private PlayerRef FindOpponent(PlayerRef deadPlayer)
     {
+        int deadTeam = Runner.GetPlayerObject(deadPlayer).GetComponent<PlayerInteraction>().TeamIndex;
+        PlayerRef winner = PlayerRef.None;
+
         foreach (PlayerRef player in Runner.ActivePlayers)
         {
-            if (player != deadPlayer)
-            {
-                return player;
-            }
+            NetworkObject playerObject = Runner.GetPlayerObject(player);
+
+            if (playerObject.GetComponent<Health>().IsDead) continue;
+
+            if (playerObject.GetComponent<PlayerInteraction>().TeamIndex == deadTeam) return PlayerRef.None;
+
+            winner = player;
         }
 
-        return PlayerRef.None;
+        return winner;
     }
 
     public void EndMatch(PlayerRef winner, WinConditions winCondition)
@@ -95,16 +101,17 @@ public class MatchManager : NetworkBehaviour
         }
 
         Winner = winner;
+        WinnerTeam = Runner.GetPlayerObject(winner).GetComponent<PlayerInteraction>().TeamIndex;
         CurrentWinCondition = winCondition;
         CurrentState = MatchState.Finished;
 
-        RPC_ShowMatchResult(winner, winCondition);
+        RPC_ShowMatchResult(WinnerTeam, winCondition);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowMatchResult(PlayerRef winner, WinConditions winCondition)
+    private void RPC_ShowMatchResult(int winnerTeam, WinConditions winCondition)
     {
-        bool localPlayerWon = Runner.LocalPlayer == winner;
+        bool localPlayerWon = Runner.GetPlayerObject(Runner.LocalPlayer).GetComponent<PlayerInteraction>().TeamIndex == winnerTeam;
 
         if (localPlayerWon)
         {
@@ -156,6 +163,7 @@ public class MatchManager : NetworkBehaviour
 
         CurrentState = MatchState.Playing;
         Winner = PlayerRef.None;
+        WinnerTeam = 0;
         CurrentWinCondition = WinConditions.None;
 
         ResetPlayers();
@@ -239,7 +247,7 @@ public class MatchManager : NetworkBehaviour
             return;
         }
 
-        Debug.Log("Partida terminada. Ganador: " + Winner +" | Razón: " + CurrentWinCondition);
+        Debug.Log("Partida terminada. Equipo ganador: " + WinnerTeam + " | Razón: " + CurrentWinCondition);
     }
 
     private void OnDestroy()

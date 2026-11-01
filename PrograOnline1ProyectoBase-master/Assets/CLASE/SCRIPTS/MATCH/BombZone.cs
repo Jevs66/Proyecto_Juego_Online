@@ -99,7 +99,9 @@ public class BombZone : NetworkBehaviour
 
     private BombZoneAction GetAvailableAction(PlayerInteraction playerInteraction, BombController bomb)
     {
-        bool isZoneOwner = playerInteraction.PlayerIndex == ownerPlayerIndex;
+        if (playerInteraction.GetComponent<Health>().IsDead) return BombZoneAction.None;
+
+        bool isZoneOwner = playerInteraction.TeamIndex == ownerPlayerIndex % 2 + 1;
 
         if (bomb.CurrentState == BombState.Carried && bomb.Carrier == playerInteraction.Object.InputAuthority && !isZoneOwner)
         {

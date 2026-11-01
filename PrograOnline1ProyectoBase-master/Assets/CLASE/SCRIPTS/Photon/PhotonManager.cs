@@ -21,7 +21,7 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Dictionary<PlayerRef, NetworkObject> players = new Dictionary<PlayerRef, NetworkObject>();
 
     [Header("Player Spawn Points")]
-    [SerializeField] private Transform[] playerSpawnPoints;
+    [SerializeField]  private Transform[] playerSpawnPoints;
 
     public static event Action onSessionListUpdated;
     public static List<SessionInfo> sessionList = new List<SessionInfo>();
@@ -36,6 +36,8 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             Destroy(gameObject);
         }
+
+        DontDestroyOnLoad(gameObject);
 
         runner = GetComponent<NetworkRunner>();
         runner.ProvideInput = true;
@@ -54,79 +56,65 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     private async Task StartCustomMatch(GameMode mode)
     {
-       
-        SceneRef gameScene = SceneRef.FromIndex(0);
+        MenuNavigation.Instance.ShowSessionLoading(mode == GameMode.Host ? "Creating server..." : "Joining server...");
 
-        NetworkSceneInfo sceneInfo = new NetworkSceneInfo();
+        var gameScene = SceneRef.FromIndex(1);
 
-        if (gameScene.IsValid)
-        {
-            sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Additive);
-        }
-        else
-        {
-            Debug.LogError("Escena no valida");
-        }
+        var sceneInfo = new NetworkSceneInfo();
+        sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Single); 
 
         await runner.StartGame(new StartGameArgs()
         {
             GameMode = mode,
-            SessionName = "#0001",
+            SessionName = mode == GameMode.Client ? null : "01",
             Scene = sceneInfo,
             PlayerCount = 2,
+            SceneManager = GetComponent<NetworkSceneManagerDefault>(), 
             SessionProperties = new Dictionary<string, SessionProperty>
             {
-                {"MapName","Abyss"},
+                {"MapName", "Abyss"},
                 {"GameMode", "Casual"}
             }
         });
     }
-    private async Task StartCustomMatch(GameMode mode, string serverName)
+    private async Task StartCustomMatch(GameMode mode, string serverName, int maxPlayers = 10)
     {
-       
-        SceneRef gameScene = SceneRef.FromIndex(0);
+        MenuNavigation.Instance.ShowSessionLoading(mode == GameMode.Host ? "Creating server..." : "Joining server...");
 
-        NetworkSceneInfo sceneInfo = new NetworkSceneInfo();
+        var gameScene = SceneRef.FromIndex(1);
 
-        if (gameScene.IsValid)
-        {
-            sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Additive);
-        }
-        else
-        {
-            Debug.LogError("Escena no valida");
-        }
+        var sceneInfo = new NetworkSceneInfo();
+        sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Single);
 
         await runner.StartGame(new StartGameArgs()
         {
             GameMode = mode,
             SessionName = serverName,
             Scene = sceneInfo,
-            PlayerCount = 2
+            PlayerCount = maxPlayers, 
+            SceneManager = GetComponent<NetworkSceneManagerDefault>(),
+            SessionProperties = new Dictionary<string, SessionProperty>
+            {
+                {"MapName", "Abyss"},
+                {"GameMode", "Casual"}
+            }
         });
     }
+
     private async Task StartQuickMatch(GameMode mode)
     {
-       
-        SceneRef gameScene = SceneRef.FromIndex(0);
+        var gameScene = SceneRef.FromIndex(1); 
 
-        NetworkSceneInfo sceneInfo = new NetworkSceneInfo();
-
-        if (gameScene.IsValid)
-        {
-            sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Additive);
-        }
-        else
-        {
-            Debug.LogError("Escena no valida");
-        }
+        var sceneInfo = new NetworkSceneInfo();
+        sceneInfo.AddSceneRef(gameScene, LoadSceneMode.Single); 
 
         await runner.StartGame(new StartGameArgs()
         {
             GameMode = mode,
             SessionName = "#0001",
             Scene = sceneInfo,
-            CustomLobbyName = "Lobby de pruebas"
+            CustomLobbyName = "Lobby de pruebas",
+            SceneManager = GetComponent<NetworkSceneManagerDefault>() 
         });
     }
 
@@ -135,9 +123,19 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
         Task startGame = StartCustomMatch(GameMode.Host);
     }
 
+    public void StartGameAsHost(string serverName, int maxPlayers)
+    {
+        Task startGame = StartCustomMatch(GameMode.Host, serverName, maxPlayers);
+    }
+
     public void StartGameAsClient()
     {
         Task startGame = StartCustomMatch(GameMode.Client);
+    }
+
+    public void StartGameAsClient(string serverName)
+    {
+        Task startGame = StartCustomMatch(GameMode.Client, serverName);
     }
 
     #region Metodos de Photon
@@ -150,39 +148,47 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        int spawnIndex = players.Count;
+        if (playerSpawnPoints != null) SpawnPlayer(runner, player);
+
+        onPlayerJoined?.Invoke();
+    }
+
+    private void SpawnPlayer(NetworkRunner runner, PlayerRef player)
+    {
+        if (players.ContainsKey(player) || playerSpawnPoints == null || playerSpawnPoints.Length == 0) return;
+
+        bool[] usedSpawns = new bool[playerSpawnPoints.Length];
+
+        foreach (NetworkObject playerObject in players.Values)
+        {
+            usedSpawns[playerObject.GetComponent<PlayerInteraction>().PlayerIndex] = true;
+        }
+
+        int spawnIndex = Array.IndexOf(usedSpawns, false);
 
         Vector3 spawnPosition = Vector3.zero;
         Quaternion spawnRotation = Quaternion.identity;
 
-        if (playerSpawnPoints != null && playerSpawnPoints.Length > 0)
+        Transform selectedSpawn = playerSpawnPoints[spawnIndex];
+
+        if (selectedSpawn != null)
         {
-            spawnIndex %= playerSpawnPoints.Length;
-
-            Transform selectedSpawn = playerSpawnPoints[spawnIndex];
-
-            if (selectedSpawn != null)
-            {
-                spawnPosition = selectedSpawn.position;
-
-                spawnRotation = selectedSpawn.rotation;
-            }
+            spawnPosition = selectedSpawn.position;
+            spawnRotation = selectedSpawn.rotation;
         }
 
-        NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, spawnRotation, player);
+        NetworkObject playerObjectNew = runner.Spawn(playerPrefab, spawnPosition, spawnRotation, player); 
 
-        PlayerInteraction playerInteraction = playerObject.GetComponent<PlayerInteraction>();
+        PlayerInteraction playerInteraction = playerObjectNew.GetComponent<PlayerInteraction>();
 
         if (playerInteraction != null)
         {
             playerInteraction.InitializePlayerIndex(spawnIndex);
         }
 
-        runner.SetPlayerObject(player, playerObject);
+        runner.SetPlayerObject(player, playerObjectNew); 
 
-        players.Add(player, playerObject);
-
-        onPlayerJoined?.Invoke();
+        players.Add(player, playerObjectNew); 
     }
 
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
@@ -264,12 +270,34 @@ public class PhotonManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnSceneLoadDone(NetworkRunner runner)
     {
+        if (!SceneManager.GetSceneByBuildIndex(1).isLoaded) return;
 
+        GameObject spawnContainer = GameObject.Find("Spawns");
+
+        if (spawnContainer == null || spawnContainer.transform.childCount == 0)
+        {
+            Debug.LogError("No hay SpawnPoints");
+            return;
+        }
+
+        playerSpawnPoints = new Transform[spawnContainer.transform.childCount];
+
+        for (int i = 0; i < playerSpawnPoints.Length; i++)
+        {
+            playerSpawnPoints[i] = spawnContainer.transform.GetChild(i);
+        }
+
+        if (!runner.IsServer) return;
+
+        foreach (PlayerRef player in runner.ActivePlayers)
+        {
+            SpawnPlayer(runner, player);
+        }
     }
 
     public void OnSceneLoadStart(NetworkRunner runner)
     {
-
+        playerSpawnPoints = null;
     }    
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)

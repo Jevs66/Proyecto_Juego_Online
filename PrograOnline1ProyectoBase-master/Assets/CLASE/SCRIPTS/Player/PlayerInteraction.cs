@@ -6,6 +6,8 @@ public class PlayerInteraction : NetworkBehaviour
     [Networked]
     public int PlayerIndex { get; private set; }
 
+    public int TeamIndex => PlayerIndex % 2 + 1;
+
     private BombZone currentZone;
 
     public BombZone CurrentZone => currentZone;
