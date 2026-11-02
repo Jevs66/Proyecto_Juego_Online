@@ -280,11 +280,13 @@ public class BombController : NetworkBehaviour
 
         currentHolder = null;
 
-        transform.position = initialPosition;
-        transform.rotation = initialRotation;
+        GetComponent<NetworkTransform>().Teleport(initialPosition, initialRotation);
 
         if (bombRigidbody != null)
         {
+            bombRigidbody.position = initialPosition;
+            bombRigidbody.rotation = initialRotation;
+
             bombRigidbody.linearVelocity = Vector3.zero;
             bombRigidbody.angularVelocity = Vector3.zero;
         }
@@ -329,8 +331,8 @@ public class BombController : NetworkBehaviour
 
         if (bombRigidbody != null)
         {
-            bombRigidbody.isKinematic = !isOnGround;
-            bombRigidbody.useGravity = isOnGround;
+            bombRigidbody.isKinematic = !isOnGround || !HasStateAuthority;
+            bombRigidbody.useGravity = isOnGround && HasStateAuthority;
 
             if (!isOnGround)
             {
